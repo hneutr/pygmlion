@@ -35,31 +35,28 @@ def get_test_output(test_input):
 
     return test_output
 
-def check_identity(test_in_file):
-    actual = get_test_output(parser.get_raw_gml(test_in_file))
-    expected = read_file(test_in_file)
+def verify_identity(test):
+    actual = get_test_output(parser.get_raw_gml(test['in']))
+    expected = read_file(test['in'])
 
     assert actual == expected
 
-def check_transform(test):
+def verify_transform(test):
     actual = get_test_output(parser.get_gml(test['in']))
     expected = read_file(test['out'])
 
     assert actual == expected
 
-def run_test(test_name):
-    test = get_test_files(test_name)
-
-    check_identity(test['in'])
-
-    if test.get('out'):
-        check_transform(test)
-
 def test_ex_1():
-    run_test('1')
+    test = get_test_files('1')
+    verify_identity(test)
+    verify_transform(test)
 
 def test_ex_2():
-    run_test('2')
+    test = get_test_files('2')
+    verify_identity(test)
+    verify_transform(test)
 
 def test_ex_3():
-    run_test('3')
+    test = get_test_files('3')
+    verify_identity(test)

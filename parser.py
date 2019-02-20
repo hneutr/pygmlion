@@ -104,6 +104,7 @@ def format_gml_dict(value):
 
                 formatted[key].append(format_gml_dict(subvalue))
 
+
     return formatted
 
 def convert_gml_dict_to_tuple_list(content):
@@ -493,7 +494,7 @@ class ListAttribute(GenericAttribute):
     def open_context(self, lines):
         """
         >>> ListAttribute(open_delimiter='|').open_context(lines=['key', '|'])
-        ['']
+        []
         >>> ListAttribute(open_delimiter='|').open_context(lines=['key', '| extra'])
         ['extra']
         >>> ListAttribute(open_delimiter='|').open_context(lines=['key', 'extra'])
@@ -504,7 +505,10 @@ class ListAttribute(GenericAttribute):
         line = lines.pop(0)
 
         if self.open_delimiter not in line:
-            raise ListParseError
+            if lines and self.open_delimiter in lines[0]:
+                line = lines.pop(0)
+            else:
+                raise ListParseError
         
         _, remaining = line.split(self.open_delimiter, 1)
 
@@ -773,6 +777,5 @@ class DuplicateIdsError(Exception):
         super().__init__(message)
 
 if __name__ == '__main__':
-    write_gml(get_raw_gml('test.gml'), 'test_test.gml')
-    # import doctest
-    # doctest.testmod()
+    import doctest
+    doctest.testmod()
