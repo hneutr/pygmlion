@@ -61,7 +61,12 @@ def get_raw_gml(filename, validate=True):
     with open(filename, 'r') as f:
         lines = [l.strip() for l in f.readlines()]
 
-    parsed = parse_lines(lines)
+    parsed = []
+    while lines:
+        attribute, lines = parse_lines(lines)
+        if attribute:
+            parsed.append(attribute)
+
     formatted = format_parsed_content(parsed, validate)
 
     return formatted
@@ -444,12 +449,12 @@ class ListAttribute(GenericAttribute):
         []
         >>> _.unconsumed
         []
-        >>> _ = ListAttribute(lines=['graph', '< key "value"'], open_delimiter='<', close_delimiter='>')
+        >>> _ = ListAttribute(lines=['graph', '< key "value" >'], open_delimiter='<', close_delimiter='>')
         >>> _.read()
         >>> _.key
         'graph'
         >>> _.lines
-        ['key "value"']
+        ['key "value" >']
         >>> _.value[0].value
         'value'
         >>> _.value[0].key
@@ -467,12 +472,18 @@ class ListAttribute(GenericAttribute):
 
         self.lines = self.open_context(self.lines)
 
-        if not self.lines:
-            value, unconsumed = [], []
-        elif self.should_close_context(self.lines):
-            value, unconsumed = [], self.close_context(self.lines)
-        else:
-            value, unconsumed = self.parse_attribute(self.lines)
+        value = []
+        unconsumed = self.lines
+
+        if self.lines:
+            while not self.should_close_context(unconsumed):
+                subvalue, unconsumed = self.parse_attribute(unconsumed)
+
+                if subvalue:
+                    value.append(subvalue)
+
+            self.close_context(unconsumed)
+
 
         self.value = value
         self.unconsumed = unconsumed
@@ -571,20 +582,25 @@ class ListAttribute(GenericAttribute):
     def parse_attribute(self, lines):
         subattribute = parse_line(lines)
 
-        subattributes = []
-        unconsumed = []
         if subattribute:
-            subattributes.append(subattribute)
-            unconsumed = subattribute.unconsumed
+            return subattribute, subattribute.unconsumed
+        else:
+            return None, []
 
-        if unconsumed:
-            if self.should_close_context(unconsumed):
-                unconsumed = self.close_context(unconsumed)
-            else:
-                other_subattributes, unconsumed = self.parse_attribute(unconsumed)
-                subattributes += other_subattributes
+        # subattributes = []
+        # unconsumed = []
+        # if subattribute:
+        #     subattributes.append(subattribute)
+        #     unconsumed = subattribute.unconsumed
 
-        return subattributes, unconsumed
+        # if unconsumed:
+        #     if self.should_close_context(unconsumed):
+        #         unconsumed = self.close_context(unconsumed)
+        #     else:
+        #         other_subattributes, unconsumed = self.parse_attribute(unconsumed)
+        #         subattributes += other_subattributes
+
+        # return subattributes, unconsumed
 
     def value_string(self, to_write=False):
         value_strings = []
@@ -649,23 +665,13 @@ def parse_line(lines):
             return attribute
 
 def parse_lines(lines):
-    attributes = []
-
-    if not lines:
-        return []
-
     attribute = parse_line(lines)
 
     if attribute:
-        attributes.append(attribute)
-        lines = attribute.unconsumed
+        return attribute, attribute.unconsumed
     else:
         # if we couldn't parse the line, move on
-        lines = lines[1:]
-
-    attributes += parse_lines(lines)
-
-    return attributes
+        return None, lines[1:]
 
 def format_parsed_content(parsed, validate=True):
     all_attributes = []
